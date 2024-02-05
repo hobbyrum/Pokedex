@@ -51,8 +51,22 @@ $PokeDex = Import-CSV -Path $CSVData | ForEach-Object {
     }
 }
 
-function GUI {
-    [String]$PokemonToDisplay = Read-Host "Enter the name of a pokemon: "
+function SearchForPokemon {
+    param ($PokemonToSearchFor)
+
+    [String]$PokemonToSearchFor = Read-Host "Search for Pokemon by name"
+
+    $SearchedForPokemon = $PokeDex | Where-Object { $_.Name -like "*$PokemonToSearchFor*" } | Select-Object -ExpandProperty Name
+
+    if ($SearchedForPokemon) {
+        Write-Host "Pokemen matching $($PokemonToSearchFor): $($SearchedForPokemon -join ', ')"
+    } else {
+        Write-Host "No matches found for: $PokemonToSearchFor"
+    }
+    MainMenu $false
+}
+function DisplayPokemon {
+    [String]$PokemonToDisplay = Read-Host "Which pokeman do you want to see information about: "
 
     $SelectedPokemon = $PokeDex | Where-Object { $_.Name -eq $PokemonToDisplay }
     $EvolvedFrom = $Pokedex | Where-Object { $_.DexNumber -eq $SelectedPokemon.EvolvedFrom } | Select-Object -ExpandProperty Name
@@ -65,12 +79,29 @@ function GUI {
         Write-Host "Height: $($SelectedPokemon.GetHeight()) in"
         Write-Host "Weight: $($SelectedPokemon.GetWeight()) lbs"
         Write-Host "Dex no.: $($SelectedPokemon.GetDexNumber())"
-        If ($SelectedPokemon.FinalEvolution -eq 'true') { Write-Host "Final evolution" }
+        If ($SelectedPokemon.FinalEvolution -eq 'true' -and $SelectedPokemon.EvolvedFrom -ne 0) { Write-Host "Final evolution" }
     } else {
         Write-Host "Pokeman `'$($PokemonToDisplay)`' not found"
     }
+    MainMenu $false
 }
-GUI
+
+function MainMenu {
+    param ([Boolean]$FirstVisit = $true)
+        if ($FirstVisit) {
+            Write-Host "`nWelcome to the magical Pokedex"
+        }
+
+        $NewLine = If ($FirstVisit) { "`n" } else { "" }
+        $WhatToDo = Read-Host -Prompt ($NewLine + "`n1: Search for pokemon by name`n2: Display information about a specific pokemon`nEnter your choice:")
+
+        switch($WhatToDo) {
+            1 { SearchForPokemon; break }
+            2 { DisplayPokemon; break }
+            default { Write-Host "Invalid option. Enter a valid choice."}
+        }
+}
+MainMenu
 
 # function DisplayAllPokemon {
 #     foreach ($pokemon in $Pokedex) {
