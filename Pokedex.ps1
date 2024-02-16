@@ -1,4 +1,11 @@
 <#
+.SYNOPSIS
+    Pokedex written in Powershell for learning purposes.
+.NOTES
+    Thanks to https://www.kaggle.com/datasets/cristobalmitchell/pokedex for the csv file.
+#>
+
+<#
 national_number: The entry number of the Pokémon in the National Pokédex
 gen: The numbered generation which the Pokémon was first introduced
 english_name: The English name of the Pokémon
@@ -32,7 +39,7 @@ description: Pokédex description from official Pokémon website
 
 #region TODO
 <#
-ShowRandomPokemon
+ShowAllPokemonOfType
     Display all found pokemen and let user choose which pokeman to see information about.
 
 SearchForPokemon
@@ -103,11 +110,11 @@ class Pokemon {
     [Int]$IsMythical
 
     [String]$Evochain0 # First pokemon, unevolved. Eggs count as $Evochain0 as well
-    [String]$Evochain1 # Condition for evolving first time
+    [String]$Evochain1 # Trigger for evolving first time
     [String]$Evochain2 # First evolution
-    [String]$Evochain3 # Condition for evolving second time
+    [String]$Evochain3 # Trigger for evolving second time
     [String]$Evochain4 # Final evolution for non-egg pokemon
-    [String]$Evochain5 # Condition for evolving
+    [String]$Evochain5 # Trigger for evolving
     [String]$Evochain6 # Final evolution for egg pokemon
 
     [String]$Gigantamax
@@ -311,8 +318,8 @@ $Pokedex = Import-CSV -Path $CSVData | ForEach-Object {
         HP = $_.hp
         Attack = $_.attack
         Defence = $_.defence
-        SpecialAttack = $_.specialAttack
-        SpecialDefence = $_.specialDefence
+        SpecialAttack = $_.sp_Attack
+        SpecialDefence = $_.sp_Defence
         Speed = $_.speed
         #
         Abilities0 = $_.abilities_0
@@ -356,7 +363,6 @@ $Pokedex = Import-CSV -Path $CSVData | ForEach-Object {
         MegaEvolutionAlt = $_.mega_evolution_Alt
         #
         Description = $_.description
-        #endregion
     }
 }
 
@@ -401,6 +407,29 @@ $PokemonTypes = @(
     "Steel"
     "Fairy"
 )
+
+function ShowPokemonEvolutions {
+    param($PokemonToShow)
+    $PokemonToShow
+    <# TOOD
+    # Implement dynamic return of evolutions and triggers
+    Somethins like this, but probably more complicated:
+
+        if ($Evochain0 -eq "Egg") {
+            Write-Host "$Name starts as an egg"
+            # Write-Host "Trigger for first evolution is: $Evochain1"
+            Write-Host "Base pokemon is $Evochain2"
+            # if ($Evochain3) { Write-Host "Trigger for second evolution is: $Evochain3" }
+            if ($Evochain4) { Write-Host "First evolution is $Evochain4" }
+            # if ($Evochain5) { Write-Host "Trigger for third evolution is: $Evochain5" }
+            if ($Evochain6) { Write-Host "Final evolution is $Evochain6" }
+        } else {
+            if ($Evochain2 -and $Evochain4) { Write-Host "Base pokemon is $Evochain0." }#`t`t Trigger for first evolution: $Evochain1"
+            if ($Evochain2) { Write-Host "First evolution is $Evochain2"}#`t`t Trigger for first evolution: $($Evochain1)"
+            if ($Evochain4) { Write-Host "Final evolution is $Evochain4"}#`t`t Trigger for second evolution: $($Evochain3)"
+        }
+    #>
+}
 
 function ShowPokemonInfo {
     param($PokemonToShow)
@@ -486,28 +515,24 @@ function ShowPokemonInfo {
         Write-Host "Name: $Name"
         Write-Host "Type: " -NoNewline
         Write-Host $PrimaryType -ForegroundColor $PokemonTypeColors[$PrimaryType] -NoNewline ; if ($SecondaryType -and $SecondaryType -ne $PrimaryType) { Write-Host " and " -NoNewline ; Write-Host $SecondaryType -ForegroundColor $PokemonTypeColors[$SecondaryType] } ; if (-not $SecondaryType) { Write-Host "" }
-
-        Write-Host "Classification: $Classification"
+        
+        if ($Classification -imatch "monkey") {
+            Write-Host "Classification: $Classification" -NoNewline
+            Write-Host ": turns out, little monkey fella"
+        } else {
+            Write-Host $Classification
+        }
         Write-Host "Height: $Height m"
         Write-Host "Weight: $Weight kg"
         Write-Host "$Description`n"
 
-        <#
-        If ($Evochain0 -eq "Egg") {
-            first evolution trigger -eq $evochain1
-            base pokemon -eq $evochain2
-            second evo trigger -eq $evochain3
-            first evolution -eq $evochain4
-            third evo trigger -eq $evochain5
-            final evolution -eq evochain6
-        } else {
-        #>
-            if ($Evochain2 -and $Evochain4) { Write-Host "Base pokemon is $Evochain0." }#`t`t Trigger for first evolution: $Evochain1"
-            if ($Evochain2) { Write-Host "First evolution is $Evochain2"}#`t`t Trigger for first evolution: $($Evochain1)"
-            if ($Evochain4) { Write-Host "Final evolution is $Evochain4"}#`t`t Trigger for second evolution: $($Evochain3)"
-        #}
+        # Implement this function above
+        ShowPokemonEvolutions $Name
+
         if ($Gender) { Write-Host "Gender: $Gender" }
     }
+    Pause
+    Main
 
 }
 
@@ -521,6 +546,8 @@ function ShowRandomPokemon {
         # Shouldn't really be able to throw an error.
         $_
     }
+    Pause
+    Main
 }
 
 function ShowAllPokemonOfType {
@@ -531,17 +558,26 @@ function ShowAllPokemonOfType {
     }
     try {
         
-    $AllPokemonOfType = $Pokedex | Where-Object { $_.PrimaryType -eq $TypeToShow } | Select-Object -ExpandProperty EnglishName
+    $PokemonOfPrimaryType = $Pokedex | Where-Object { $_.PrimaryType -eq $TypeToShow } | Select-Object -ExpandProperty EnglishName
+    $PokemonOfSecondaryType = $Pokedex | Where-Object { $_.SecondaryType -eq $TypeToShow } | Select-Object -ExpandProperty EnglishName
+    $BothTypes = $PokemonOfPrimaryType + $PokemonOfSecondaryType | Select-Object -Unique
 
-    Write-Host "All $TypeToShow pokemon: $($AllPokemonOfType -join ', ')"
+    Write-Host "All Pokemon of type " -NoNewLine ; Write-Host $TypeToShow -ForegroundColor $PokemonTypeColors[$TypeToShow]
+    foreach ($Type in $BothTypes) {
+        Write-Host $Type
+    }
 
     } catch {
         $_
     }
+    Pause
+    Main
 }
 
 function SuperSecretFunction {
-    Write-Host "(●'◡'●) ┳━┳`n(ㆆ_ㆆ) ┳━┳`n( ˘︹˘ )`n(ヘ･_･)ヘ ┳━┳`n(╯°□°）╯︵ ┻━┻`n(●'◡'●)"
+    Write-Host "(●'◡'●)`n`n(●'◡'●) ┳━┳`n`n(ㆆ_ㆆ) ┳━┳`n`n( ˘︹˘ )`n`n(ヘ･_･)ヘ ┳━┳`n`n(╯°□°）╯︵ ┻━┻`n`n(●'◡'●)"
+    Pause
+    Main
 }
 
 function SearchForPokemon {
@@ -560,7 +596,7 @@ function SearchForPokemon {
 
 function TopTenPokemonByStat {
     # TODO
-    # Implement function
+    # Fix this shite function
     param ($StatToDisplay)
 
     if (-not $StatToDisplay) {
@@ -568,27 +604,50 @@ function TopTenPokemonByStat {
     $StatToDisplay = Read-Host "Show top ten pokemen by which stat?"
     }
 
+    # Not showing for "Special attack" and "Special defence", but the other stats work.
     $StatsTable = @{
         "Height" = "height_m"
         "Weight" = "weight_kg"
-        "HP" = "HP"
+        "HP" = "hp"
         "Attack" = "attack"
         "Defence" = "defence"
-        "Special attack" = "specialAttack"
-        "Special defence" = "specialDefence"
+        "Special attack" = "sp_attack"
+        "Special defence" = "sp_defence"
         "Speed" = "speed"
     }
 
     try {
         $StatProperty = $StatsTable[$StatToDisplay]
+        Write-Host "StatProperty: $StatProperty"
         $TopTenPokemon = $Pokedex | Sort-Object -Property $StatProperty -Descending | Select-Object -First 10
         # $TopTenPokemon
         Write-Host "Top Ten Pokemon by $($StatToDisplay):`n"
         $TopTenPokemon | ForEach-Object {
-            Write-Host "$($_.EnglishName) - $($_.StatProperty)"
+            Write-Host "$($_.EnglishName) - $($_.$StatProperty)"
         }
     } catch {
         $_
+    }
+    Pause
+    Main
+}
+
+function ExitApplication {
+    $Title = "Good evening"
+    $Question = "Exit the program?"
+    $Choices = @(
+        [System.Management.Automation.Host.ChoiceDescription]::new("&Yes", "What is the charge?!") # Choice 0
+        [System.Management.Automation.Host.ChoiceDescription]::new("&No", "Are you the one...?") # Choice 1
+    )
+    $DefaultChoice = -1 # Shows no default choice
+
+    $Decision = $Host.UI.PromptForChoice($Title, $Question, $Choices, $DefaultChoice)
+
+    if ($Decision -eq 0) {
+        Write-Host "Tata and farewell..."
+        Exit
+    } else {
+        Main
     }
 }
 
@@ -599,27 +658,35 @@ function MainMenu {
     Write-Host "2. Display information about a specific pokeman"
     Write-Host "3. Show information about a random pokeman"
     Write-Host "4. Show all pokemen by type"
-    Write-Host "5. Exit`n"
+    Write-Host "5. Show top 10 pokemon by stat"
+    Write-Host "0. Exit`n"
 }
 
 function Main {
-    MainMenu
+    try {
+        do {
+            MainMenu
 
-    $Choice = Read-Host "Enter a number"
+            $Choice = Read-Host "Enter a number"
 
-    switch($Choice) {
-        1 { SearchForPokemon }
-        2 { ShowPokemonInfo }
-        3 { ShowRandomPokemon }
-        4 { ShowAllPokemonOfType }
-        5 { ExitApplication }
-        69 { SuperSecretFunction }
-        default { Write-Host "Good evening"; break }
+            switch($Choice) {
+                1 { SearchForPokemon }
+                2 { ShowPokemonInfo }
+                3 { ShowRandomPokemon }
+                4 { ShowAllPokemonOfType }
+                5 { TopTenPokemonByStat }
+                0 { ExitApplication }
+                69 { SuperSecretFunction }
+                default { Write-Host "Good evening"; break }
+            }
+        } while ($Choice -ne 0)
+    } catch {
+        $_
     }
 }
 
-TopTenPokemonByStat
 # Main
-# ShowAllPokemonOfType 'Ghost'
-# ShowPokemonInfo 'beedrill'
+# ShowAllPokemonOfType 'Dragon'
+# ShowPokemonInfo 'mankey'
 # ShowRandomPokemon
+# ShowPokemonEvolutions "mankey"
